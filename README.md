@@ -210,3 +210,4 @@ The GitHub Actions pipeline has 3 jobs:
 - Use `assertThat()` (AssertJ) for readable assertions
 - Use `@DisplayName` for human-readable test names
 - Check the example tests for patterns before writing your own
+
