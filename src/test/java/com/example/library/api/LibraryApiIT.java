@@ -15,8 +15,10 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.*;
 
 import java.util.Map;
+import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
@@ -333,19 +335,40 @@ class LibraryApiIT extends AbstractIntegrationTest {
         @Test
         @DisplayName("should create a member and return 201")
         void shouldCreateMember() {
-            // TODO: POST a new member to /api/members
-            //       Verify 201 status and response body
-            fail("Not implemented yet");
+            Member newMember = new Member("Bob", "bob@test.com", MembershipType.STANDARD);
+
+            ResponseEntity<Member> response = restTemplate.postForEntity(
+                    baseUrl + "/members", newMember, Member.class);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+            Member body = Objects.requireNonNull(response.getBody());
+            assertThat(body.getId()).isNotNull();
+            assertThat(body.getName()).isEqualTo("Bob");
+            assertThat(body.getEmail()).isEqualTo("bob@test.com");
+            assertThat(body.isActive()).isTrue();
         }
 
         @Test
         @DisplayName("should deactivate a member via DELETE")
         void shouldDeactivateMember() {
-            // TODO:
             // 1. Create a member
+            Member member = createTestMember("Carol", "carol@test.com", MembershipType.PREMIUM);
+
             // 2. DELETE /api/members/{id}
+            ResponseEntity<Void> deleteResponse = restTemplate.exchange(
+                    baseUrl + "/members/" + member.getId(),
+                    HttpMethod.DELETE, null, Void.class);
+
+            assertThat(deleteResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
             // 3. GET /api/members/{id} and verify active = false
-            fail("Not implemented yet");
+            ResponseEntity<Member> getResponse = restTemplate.getForEntity(
+                    baseUrl + "/members/" + member.getId(), Member.class);
+
+            Member deactivated = getResponse.getBody();
+            assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertNotNull(deactivated);
+            assertThat(deactivated.isActive()).isFalse();
         }
 
         @Test
