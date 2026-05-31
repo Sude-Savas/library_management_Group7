@@ -374,32 +374,96 @@ class LibraryApiIT extends AbstractIntegrationTest {
         @Test
         @DisplayName("should return 400 when creating member with invalid email")
         void shouldReturn400_WhenInvalidEmail() {
-            // TODO: POST a member with an invalid email
-            //       Verify 400 BAD REQUEST
-            fail("Not implemented yet");
-        }
-    }
+            Member invalidMember = new Member("Burak", "invalid-email", MembershipType.STANDARD);
 
-    @Nested
-    @DisplayName("Search & Filter API")
-    class SearchApiTests {
+            ResponseEntity<Map> response = restTemplate.postForEntity(
+                    baseUrl + "/members", invalidMember, Map.class);
 
-        @Test
-        @DisplayName("should search books by keyword via GET /api/books/search?keyword=...")
-        void shouldSearchBooks() {
-            // TODO: Create several books, search by keyword, verify results
-            fail("Not implemented yet");
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         }
 
-        @Test
-        @DisplayName("should get active borrows for a member")
-        void shouldGetActiveBorrows() {
-            // TODO:
-            // 1. Create a member and 2 books
-            // 2. Borrow both books
-            // 3. Return one of them
-            // 4. GET /api/borrows/member/{id}/active — should return only 1
-            fail("Not implemented yet");
+        @Nested
+        @DisplayName("Search & Filter API")
+        class SearchApiTests {
+
+            @Test
+            @DisplayName("should search books by keyword via GET /api/books/search?keyword=...")
+            void shouldSearchBooks() {
+                createTestBook("978-1", "The Lord of the Rings", "J.R.R. Tolkien");
+                createTestBook("978-2", "Tutunamayanlar", "Oğuz Atay");
+                createTestBook("978-3", "Harry Potter and the Philosopher's Stone", "J.K. Rowling");
+
+                ResponseEntity<Book[]> response = restTemplate.getForEntity(
+                        baseUrl + "/books/search?keyword=Tutunamayanlar", Book[].class);
+
+                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(response.getBody()).hasSize(1);
+                assertThat(response.getBody()[0].getTitle()).isEqualTo("Tutunamayanlar");
+            }
+
+            @Test
+            @DisplayName("should get active borrows for a member")
+            void shouldGetActiveBorrows() {
+                Member member = createTestMember(
+                        "Burak",
+                        "burak@gmail.com",
+                        MembershipType.STANDARD
+                );
+
+                Book book1 = createTestBook(
+                        "978-1",
+                        "The Lord of the Rings",
+                        "J.R.R. Tolkien"
+                );
+
+                Book book2 = createTestBook(
+                        "978-2",
+                        "Tutunamayanlar",
+                        "Oğuz Atay"
+                );
+
+                BorrowRequest request1 =
+                        new BorrowRequest(book1.getId(), member.getId());
+
+                BorrowRequest request2 =
+                        new BorrowRequest(book2.getId(), member.getId());
+
+                ResponseEntity<Map> borrowResponse1 =
+                        restTemplate.postForEntity(
+                                baseUrl + "/borrows",
+                                request1,
+                                Map.class
+                        );
+
+                restTemplate.postForEntity(
+                        baseUrl + "/borrows",
+                        request2,
+                        Map.class
+                );
+
+                Number borrowId =
+                        (Number) borrowResponse1.getBody().get("id");
+
+                restTemplate.postForEntity(
+                        baseUrl + "/borrows/" + borrowId.longValue() + "/return",
+                        null,
+                        Map.class
+                );
+
+                ResponseEntity<Map[]> response =
+                        restTemplate.getForEntity(
+                                baseUrl + "/borrows/member/" + member.getId() + "/active",
+                                Map[].class
+                        );
+
+                assertThat(response.getStatusCode())
+                        .isEqualTo(HttpStatus.OK);
+
+                assertThat(response.getBody())
+                        .hasSize(1);
+                assertThat(response.getBody()[0])
+                        .containsEntry("bookTitle", "Tutunamayanlar");
+            }
         }
     }
 }
